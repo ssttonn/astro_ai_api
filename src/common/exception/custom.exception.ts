@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { Response } from '../response/custom.response';
+import { ResponseHandler } from '../response/custom.response';
 
 export class AppException<T> extends HttpException {
   constructor(
@@ -7,6 +7,6 @@ export class AppException<T> extends HttpException {
     status: HttpStatus = HttpStatus.BAD_REQUEST,
     message: string = 'An error occurred',
   ) {
-    super(Response.error(error, message, status), status);
+    super(ResponseHandler.error(error, message, status), status);
   }
 }

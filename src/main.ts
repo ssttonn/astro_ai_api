@@ -1,8 +1,9 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpStatus, ValidationPipe } from '@nestjs/common';
 import { AppException } from './common/exception/custom.exception';
 import { ValidationError } from 'class-validator';
+import { AllExceptionFilter } from './common/filters/exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,6 +24,8 @@ async function bootstrap() {
       },
     }),
   );
+
+  // const httpAdapterHost = app.get(HttpAdapterHost);
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();
