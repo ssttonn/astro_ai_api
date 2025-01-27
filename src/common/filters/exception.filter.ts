@@ -1,12 +1,10 @@
 import {
   ArgumentsHost,
   Catch,
-  ExceptionFilter,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { BaseExceptionFilter, HttpAdapterHost } from '@nestjs/core';
-import { ResponseHandler } from '../response/custom.response';
+import { BaseExceptionFilter } from '@nestjs/core';
 import { AppException } from '../exception/custom.exception';
 
 @Catch()
@@ -26,7 +24,14 @@ export class AllExceptionFilter extends BaseExceptionFilter {
         host,
       );
     } else {
-      super.catch(exception, host);
+      if (exception instanceof AppException) {
+        super.catch(exception, host);
+      } else {
+        super.catch(
+          new AppException(undefined, exception.getStatus(), exception.message),
+          host,
+        );
+      }
     }
   }
 }

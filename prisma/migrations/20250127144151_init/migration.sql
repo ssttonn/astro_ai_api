@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "LoginMethod" ALTER COLUMN "key" SET DATA TYPE VARCHAR(100);

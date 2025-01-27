@@ -3,8 +3,8 @@ import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import {
   ClientVersion,
-  HigherVersion,
-  LowerVersion,
+  FromVersion,
+  ToVersion,
 } from '../decorators/version.decorator';
 
 @Injectable()
@@ -39,7 +39,7 @@ export class HigherVersionGuard {
 
   canActivate(context: ExecutionContext): boolean {
     const version: string = this.reflector.get<string>(
-      HigherVersion,
+      FromVersion,
       context.getHandler(),
     );
     if (!version) {
@@ -66,9 +66,10 @@ export class LowerVersionGuard {
 
   canActivate(context: ExecutionContext): boolean {
     const version: string = this.reflector.get<string>(
-      LowerVersion,
+      ToVersion,
       context.getHandler(),
     );
+
     if (!version) {
       return true;
     }

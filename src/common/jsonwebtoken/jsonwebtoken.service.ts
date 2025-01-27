@@ -8,13 +8,13 @@ export class JsonwebtokenService extends JwtService {
     const accessToken = await this.signAsync(payload, {
       expiresIn: '1d',
       secret: process.env.JWT_SECRET,
-      algorithm: 'HS512',
+      algorithm: 'HS256',
     });
     const accessTokenExpiresIn = new Date().getTime() + 1000 * 60 * 60 * 24;
     const refreshToken = await this.signAsync(payload, {
       expiresIn: '7d',
       secret: process.env.JWT_SECRET,
-      algorithm: 'HS512',
+      algorithm: 'HS256',
     });
     const refreshTokenExpiresIn =
       new Date().getTime() + 1000 * 60 * 60 * 24 * 7;
@@ -25,5 +25,12 @@ export class JsonwebtokenService extends JwtService {
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
     };
+  }
+
+  async verifyToken(token: string): Promise<TokenPayload> {
+    return this.verifyAsync(token, {
+      secret: process.env.JWT_SECRET,
+      algorithms: ['HS256'],
+    });
   }
 }
