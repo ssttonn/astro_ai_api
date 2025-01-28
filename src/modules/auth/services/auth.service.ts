@@ -84,8 +84,9 @@ export class AuthService {
 
     if (existingUser) {
       throw new AppException(
-        'User already exists, please login instead',
+        undefined,
         HttpStatus.CONFLICT,
+        'User already exists, please login instead',
       );
     }
 
