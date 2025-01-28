@@ -5,7 +5,9 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
+  Query,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -14,6 +16,9 @@ import { LoginGoogleBodyDto } from '../dtos/login-google-body.dto';
 import { RegisterBodyDto } from '../dtos/register-body.dto';
 import { AuthService } from '../services/auth.service';
 import { LoginFacebookBodyDto } from '../dtos/login-facebook-body.dto';
+import { LoginMethod } from 'src/common/enums/login-method';
+import { UppercasePipe } from 'src/shared/pipes/uppercase.pipe';
+import { LoginGithubBodyDto } from '../dtos/login-github-body.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -35,14 +40,18 @@ export class AuthController {
     return this.authService.refreshToken(refreshToken);
   }
 
-  @Get('google/request')
-  requestGoogleLogin() {
-    return this.authService.requestGoogleLogin();
-  }
-
-  @Get('facebook/request')
-  requestFacebookLogin() {
-    return this.authService.requestFacebookLogin();
+  @Get(':loginMethod/request')
+  requestLogin(@Param('loginMethod', UppercasePipe) loginMethod: LoginMethod) {
+    switch (loginMethod) {
+      case LoginMethod.GOOGLE:
+        return this.authService.requestGoogleLogin();
+      case LoginMethod.FACEBOOK:
+        return this.authService.requestFacebookLogin();
+      case LoginMethod.GITHUB:
+        return this.authService.requestGithubLogin();
+      default:
+        throw new Error('Invalid login method');
+    }
   }
 
   @Post('google')
@@ -57,5 +66,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   verifyFacebookLogin(@Body() body: LoginFacebookBodyDto) {
     return this.authService.authWithFacebook(body.accessCode);
+  }
+
+  @Post('github')
+  @UsePipes(ValidationPipe)
+  @HttpCode(HttpStatus.OK)
+  verifyGithubLogin(@Body() body: LoginGithubBodyDto) {
+    return this.authService.authWithGithub(body.accessCode);
   }
 }

@@ -24,7 +24,7 @@ model User {
   email       String        @unique @map("email") @db.VarChar(63)
   firstName   String        @map("first_name") @db.VarChar(63)
   lastName    String        @map("last_name") @db.VarChar(63)
-  username    String        @unique @map("username") @db.VarChar(63)
+  username    String        @map("username") @db.VarChar(63)
   bio         String?       @map("bio") @db.Text
   avatar      String?       @map("avatar") @db.Text
   gender      Gender        @default(NOT_SPECIFIED) @map("gender")
@@ -44,6 +44,7 @@ enum LoginMethodType {
   GOOGLE
   FACEBOOK
   TWITTER
+  GITHUB
 }
 
 model LoginMethod {

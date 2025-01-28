@@ -5,7 +5,7 @@ import {
   ClientVersion,
   FromVersion,
   ToVersion,
-} from '../decorators/version.decorator';
+} from 'src/common/decorators/version.decorator';
 
 @Injectable()
 export class SpecificVersionGuard {

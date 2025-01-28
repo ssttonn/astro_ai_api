@@ -187,6 +187,16 @@ export class AuthService {
     );
   }
 
+  requestGithubLogin() {
+    return ResponseHandler.success<Record<string, string>>(
+      {
+        url: `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&scope=user:email`,
+      },
+      HttpStatus.OK,
+      'Github login request successful',
+    );
+  }
+
   async authWithGoogle(accessCode: string) {
     // Google login logic
     try {
@@ -306,6 +316,87 @@ export class AuthService {
     }
   }
 
+  async authWithGithub(accessCode: string) {
+    try {
+      const tokenResponse = await this.httpService.axiosRef.post(
+        'https://github.com/login/oauth/access_token',
+        {
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code: accessCode,
+        },
+        {
+          headers: {
+            Accept: 'application/json',
+          },
+        },
+      );
+
+      const { access_token } = tokenResponse.data;
+
+      const [userInfoResponse, emailListResponse] = await Promise.all([
+        this.httpService.axiosRef.get('https://api.github.com/user', {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }),
+        this.httpService.axiosRef.get('https://api.github.com/user/emails', {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }),
+      ]);
+
+      const userInfo = userInfoResponse.data;
+
+      const primaryEmail = emailListResponse.data.find(
+        (email: { primary: boolean }) => email.primary,
+      ).email;
+
+      const { id, avatar_url, login, name } = userInfo;
+
+      const user = await this.authUser(LoginMethod.GITHUB, {
+        email: primaryEmail,
+        firstName: name,
+        lastName: name,
+        identifier: id.toString(),
+        avatarUrl: avatar_url,
+        username: login,
+      });
+
+      const tokenPayload: TokenPayload = {
+        id: user.id,
+      };
+
+      delete user.LoginMethod;
+
+      return ResponseHandler.success<
+        AuthResponse & {
+          info: UnsensitiveUser<typeof user>;
+        }
+      >(
+        {
+          ...(await this.jwtService.signToken(tokenPayload)),
+          info: user,
+        },
+        HttpStatus.OK,
+        'Login successfully',
+      );
+    } catch (error) {
+      let errorResponse = error;
+      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      if (error instanceof AxiosError) {
+        errorResponse = error.response?.data ?? errorResponse;
+        statusCode = error.status ?? statusCode;
+      }
+      throw new AppException(
+        errorResponse,
+        statusCode,
+        'Failed to authenticate with Github',
+      );
+    }
+  }
+
   private async authUser(
     method: LoginMethod,
     userData: {
@@ -313,10 +404,12 @@ export class AuthService {
       identifier: string;
       firstName: string;
       lastName: string;
+      username?: string;
       avatarUrl: string | undefined;
     },
   ) {
-    const { email, identifier, firstName, lastName, avatarUrl } = userData;
+    const { email, identifier, firstName, lastName, avatarUrl, username } =
+      userData;
     let user: any = await this.userQuery.find(
       {
         email,
@@ -333,7 +426,7 @@ export class AuthService {
           firstName,
           lastName,
           avatar: avatarUrl,
-          username: email.split('@')[0],
+          username: username || email.split('@')[0],
           LoginMethod: {
             create: {
               method: method as LoginMethodType,

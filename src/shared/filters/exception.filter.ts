@@ -5,7 +5,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { AppException } from '../exception/custom.exception';
+import { AppException } from 'src/common/exception/custom.exception';
 
 @Catch()
 export class AllExceptionFilter extends BaseExceptionFilter {

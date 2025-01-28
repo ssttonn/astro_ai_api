@@ -7,8 +7,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { Request } from 'express';
-import { JsonwebtokenService } from '../jsonwebtoken/jsonwebtoken.service';
-import { AUTH_ROUTE } from '../decorators/auth.decorator';
+import { JsonwebtokenService } from 'src/common/jsonwebtoken/jsonwebtoken.service';
+import { AUTH_ROUTE } from 'src/common/decorators/auth.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

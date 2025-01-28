@@ -1,20 +1,20 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AllExceptionFilter } from './common/filters/exception.filter';
-import { AuthGuard } from './common/guards/auth.guard';
-import {
-  HigherVersionGuard,
-  LowerVersionGuard,
-  SpecificVersionGuard,
-} from './common/guards/version.guard';
+
 import { JsonwebtokenModule } from './common/jsonwebtoken/jsonwebtoken.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProfileModule } from './modules/profile/profile.module';
-import { UserQuery } from './shared/queries/user.query';
-import { HttpModule } from '@nestjs/axios';
+import { AllExceptionFilter } from './shared/filters/exception.filter';
+import {
+  HigherVersionGuard,
+  LowerVersionGuard,
+  SpecificVersionGuard,
+} from './shared/guards/version.guard';
+import { AuthGuard } from './shared/guards/auth.guard';
 
 @Module({
   imports: [
