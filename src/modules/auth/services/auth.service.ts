@@ -16,6 +16,7 @@ import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
 import { LoginMethodQuery } from 'src/shared/queries/login-method.query';
 import { LoginMethod } from 'src/common/enums/login-method';
+import { LoginMethodType } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -166,6 +167,26 @@ export class AuthService {
     );
   }
 
+  requestGoogleLogin() {
+    return ResponseHandler.success<Record<string, string>>(
+      {
+        url: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&response_type=code&scope=email%20profile`,
+      },
+      HttpStatus.OK,
+      'Google login request successful',
+    );
+  }
+
+  requestFacebookLogin() {
+    return ResponseHandler.success<Record<string, string>>(
+      {
+        url: `https://www.facebook.com/v22.0/dialog/oauth?client_id=${process.env.FACEBOOK_APP_ID}&redirect_uri=${process.env.FACEBOOK_REDIRECT_URI}&response_type=code&scope=email,public_profile`,
+      },
+      HttpStatus.OK,
+      'Facebook login request successful',
+    );
+  }
+
   async authWithGoogle(accessCode: string) {
     // Google login logic
     try {
@@ -188,55 +209,13 @@ export class AuthService {
 
       const { email, sub, given_name, family_name, picture } = tokenInfo.data;
 
-      let user: any = await this.userQuery.find(
-        {
-          email,
-        },
-        {
-          LoginMethod: true,
-        },
-      );
-
-      if (!user) {
-        user = await this.prismaService.user.create({
-          data: {
-            email,
-            firstName: given_name,
-            lastName: family_name,
-            avatar: picture,
-            username: email.split('@')[0],
-            LoginMethod: {
-              create: {
-                method: LoginMethod.GOOGLE,
-                identifier: sub,
-              },
-            },
-          },
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            username: true,
-            avatar: true,
-            bio: true,
-          },
-        });
-      }
-
-      const googleLoginMethod = user.LoginMethod.find(
-        (loginMethod) => loginMethod.method === LoginMethod.GOOGLE,
-      );
-
-      if (!googleLoginMethod) {
-        await this.prismaService.loginMethod.create({
-          data: {
-            userId: user.id,
-            method: LoginMethod.GOOGLE,
-            identifier: sub,
-          },
-        });
-      }
+      const user = await this.authUser(LoginMethod.GOOGLE, {
+        email,
+        identifier: sub,
+        firstName: given_name,
+        lastName: family_name,
+        avatarUrl: picture,
+      });
 
       const tokenPayload: TokenPayload = {
         id: user.id,
@@ -269,5 +248,125 @@ export class AuthService {
         'Failed to authenticate with Google',
       );
     }
+  }
+
+  async authWithFacebook(accessCode: string) {
+    // Facebook login logic
+    try {
+      const tokenResponse = await this.httpService.axiosRef.get(
+        `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${process.env.FACEBOOK_APP_ID}&redirect_uri=${process.env.FACEBOOK_REDIRECT_URI}&client_secret=${process.env.FACEBOOK_APP_SECRET}&code=${accessCode}`,
+      );
+
+      const { access_token } = tokenResponse.data;
+
+      const userInfo = await this.httpService.axiosRef.get(
+        `https://graph.facebook.com/v22.0/me?fields=id,email,first_name,last_name,picture&access_token=${access_token}`,
+      );
+
+      const { email, id, first_name, last_name, picture } = userInfo.data;
+
+      const user = await this.authUser(LoginMethod.FACEBOOK, {
+        email,
+        identifier: id,
+        firstName: first_name,
+        lastName: last_name,
+        avatarUrl: picture.data.url,
+      });
+
+      const tokenPayload: TokenPayload = {
+        id: user.id,
+      };
+
+      delete user.LoginMethod;
+
+      return ResponseHandler.success<
+        AuthResponse & {
+          info: UnsensitiveUser<typeof user>;
+        }
+      >(
+        {
+          ...(await this.jwtService.signToken(tokenPayload)),
+          info: user,
+        },
+        HttpStatus.OK,
+        'Login successfully',
+      );
+    } catch (error) {
+      let errorResponse = error;
+      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      if (error instanceof AxiosError) {
+        errorResponse = error.response?.data ?? errorResponse;
+        statusCode = error.status ?? statusCode;
+      }
+      throw new AppException(
+        errorResponse,
+        statusCode,
+        'Failed to authenticate with Facebook',
+      );
+    }
+  }
+
+  private async authUser(
+    method: LoginMethod,
+    userData: {
+      email: string;
+      identifier: string;
+      firstName: string;
+      lastName: string;
+      avatarUrl: string | undefined;
+    },
+  ) {
+    const { email, identifier, firstName, lastName, avatarUrl } = userData;
+    let user: any = await this.userQuery.find(
+      {
+        email,
+      },
+      {
+        LoginMethod: true,
+      },
+    );
+
+    if (!user) {
+      user = await this.prismaService.user.create({
+        data: {
+          email,
+          firstName,
+          lastName,
+          avatar: avatarUrl,
+          username: email.split('@')[0],
+          LoginMethod: {
+            create: {
+              method: method as LoginMethodType,
+              identifier,
+            },
+          },
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          username: true,
+          avatar: true,
+          bio: true,
+        },
+      });
+    }
+
+    const loginMethod = user.LoginMethod.find(
+      (loginMethod) => loginMethod.method === method,
+    );
+
+    if (!loginMethod) {
+      await this.prismaService.loginMethod.create({
+        data: {
+          userId: user.id,
+          method: method as LoginMethodType,
+          identifier,
+          email,
+        },
+      });
+    }
+    return user;
   }
 }

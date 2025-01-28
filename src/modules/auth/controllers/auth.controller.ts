@@ -1,21 +1,19 @@
 import {
   Body,
   Controller,
-  Header,
+  Get,
   Headers,
   HttpCode,
   HttpStatus,
-  Param,
   Post,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { LoginBodyDto } from '../dtos/login-body.dto';
+import { LoginGoogleBodyDto } from '../dtos/login-google-body.dto';
 import { RegisterBodyDto } from '../dtos/register-body.dto';
 import { AuthService } from '../services/auth.service';
-import { IsNotEmpty } from 'class-validator';
-import { LoginMethod } from 'src/common/enums/login-method';
-import { LoginGoogleBodyDto } from '../dtos/login-google-body.dto';
+import { LoginFacebookBodyDto } from '../dtos/login-facebook-body.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -37,13 +35,27 @@ export class AuthController {
     return this.authService.refreshToken(refreshToken);
   }
 
+  @Get('google/request')
+  requestGoogleLogin() {
+    return this.authService.requestGoogleLogin();
+  }
+
+  @Get('facebook/request')
+  requestFacebookLogin() {
+    return this.authService.requestFacebookLogin();
+  }
+
   @Post('google')
-  @HttpCode(HttpStatus.OK)
   @UsePipes(ValidationPipe)
-  socialLogin(
-    @Param('social') social: LoginMethod,
-    @Body() body: LoginGoogleBodyDto,
-  ) {
+  @HttpCode(HttpStatus.OK)
+  verifyGoogleLogin(@Body() body: LoginGoogleBodyDto) {
     return this.authService.authWithGoogle(body.accessCode);
+  }
+
+  @Post('facebook')
+  @UsePipes(ValidationPipe)
+  @HttpCode(HttpStatus.OK)
+  verifyFacebookLogin(@Body() body: LoginFacebookBodyDto) {
+    return this.authService.authWithFacebook(body.accessCode);
   }
 }
