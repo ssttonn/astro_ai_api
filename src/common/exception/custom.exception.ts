@@ -10,3 +10,7 @@ export class AppException<T> extends HttpException {
     super(ResponseHandler.error(error, message, status), status);
   }
 }
+
+export enum ErrorCode {
+  ERROR_EMAIL_REQUIRED = 'Email must be provided',
+}

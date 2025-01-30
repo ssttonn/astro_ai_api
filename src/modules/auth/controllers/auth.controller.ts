@@ -19,6 +19,7 @@ import { LoginFacebookBodyDto } from '../dtos/login-facebook-body.dto';
 import { LoginMethod } from 'src/common/enums/login-method';
 import { UppercasePipe } from 'src/shared/pipes/uppercase.pipe';
 import { LoginGithubBodyDto } from '../dtos/login-github-body.dto';
+import { LoginTwitterBodyDto } from '../dtos/login-twitter-body.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -49,6 +50,8 @@ export class AuthController {
         return this.authService.requestFacebookLogin();
       case LoginMethod.GITHUB:
         return this.authService.requestGithubLogin();
+      case LoginMethod.TWITTER:
+        return this.authService.requestTwitterLogin();
       default:
         throw new Error('Invalid login method');
     }
@@ -73,5 +76,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   verifyGithubLogin(@Body() body: LoginGithubBodyDto) {
     return this.authService.authWithGithub(body.accessCode);
+  }
+
+  @Post('twitter')
+  @UsePipes(ValidationPipe)
+  @HttpCode(HttpStatus.OK)
+  verifyTwitterLogin(@Body() body: LoginTwitterBodyDto) {
+    return this.authService.authWithTwitter(body.accessCode);
   }
 }

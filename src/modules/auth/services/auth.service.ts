@@ -1,5 +1,9 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { LoginMethodType } from '@prisma/client';
+import { AxiosError } from 'axios';
 import * as bcrypt from 'bcrypt';
+import { LoginMethod } from 'src/common/enums/login-method';
 import { AppException } from 'src/common/exception/custom.exception';
 import { JsonwebtokenService } from 'src/common/jsonwebtoken/jsonwebtoken.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -9,14 +13,10 @@ import {
   TokenPayload,
   UserWithoutPassword as UnsensitiveUser,
 } from 'src/common/types/custom.type';
+import { LoginMethodQuery } from 'src/shared/queries/login-method.query';
+import { UserQuery } from 'src/shared/queries/user.query';
 import { LoginBodyDto } from '../dtos/login-body.dto';
 import { RegisterBodyDto } from '../dtos/register-body.dto';
-import { UserQuery } from 'src/shared/queries/user.query';
-import { HttpService } from '@nestjs/axios';
-import { AxiosError } from 'axios';
-import { LoginMethodQuery } from 'src/shared/queries/login-method.query';
-import { LoginMethod } from 'src/common/enums/login-method';
-import { LoginMethodType } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -198,6 +198,16 @@ export class AuthService {
     );
   }
 
+  requestTwitterLogin() {
+    return ResponseHandler.success<Record<string, string>>(
+      {
+        url: `https://x.com/i/oauth2/authorize?response_type=code&client_id=${process.env.TWITTER_CLIENT_ID}&redirect_uri=${process.env.TWITTER_REDIRECT_URI}&scope=tweet.read%20users.read&state=state&code_challenge=challenge&code_challenge_method=plain`,
+      },
+      HttpStatus.OK,
+      'Twitter login request successful',
+    );
+  }
+
   async authWithGoogle(accessCode: string) {
     // Google login logic
     try {
@@ -247,17 +257,7 @@ export class AuthService {
         'Login successfully',
       );
     } catch (error) {
-      let errorResponse = error;
-      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      if (error instanceof AxiosError) {
-        errorResponse = error.response?.data ?? errorResponse;
-        statusCode = error.status ?? statusCode;
-      }
-      throw new AppException(
-        errorResponse,
-        statusCode,
-        'Failed to authenticate with Google',
-      );
+      this.handleError(error);
     }
   }
 
@@ -303,17 +303,7 @@ export class AuthService {
         'Login successfully',
       );
     } catch (error) {
-      let errorResponse = error;
-      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      if (error instanceof AxiosError) {
-        errorResponse = error.response?.data ?? errorResponse;
-        statusCode = error.status ?? statusCode;
-      }
-      throw new AppException(
-        errorResponse,
-        statusCode,
-        'Failed to authenticate with Facebook',
-      );
+      this.handleError(error);
     }
   }
 
@@ -384,24 +374,104 @@ export class AuthService {
         'Login successfully',
       );
     } catch (error) {
-      let errorResponse = error;
-      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      if (error instanceof AxiosError) {
-        errorResponse = error.response?.data ?? errorResponse;
-        statusCode = error.status ?? statusCode;
-      }
-      throw new AppException(
-        errorResponse,
-        statusCode,
-        'Failed to authenticate with Github',
-      );
+      this.handleError(error);
     }
+  }
+
+  async authWithTwitter(accessCode: string) {
+    try {
+      const authToken = Buffer.from(
+        `${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`,
+      ).toString('base64');
+      const tokenResponse = await this.httpService.axiosRef.post(
+        'https://api.x.com/2/oauth2/token',
+        {
+          grant_type: 'authorization_code',
+          client_id: process.env.TWITTER_CLIENT_ID,
+          redirect_uri: process.env.TWITTER_REDIRECT_URI,
+          code_verifier: 'challenge',
+          code: accessCode,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: `Basic ${authToken}`,
+          },
+        },
+      );
+
+      const { access_token } = tokenResponse.data;
+
+      console.log(access_token);
+
+      const userInfoResponse = await this.httpService.axiosRef.get(
+        'https://api.x.com/2/users/me',
+        {
+          params: {
+            'user.fields': 'id,username,profile_image_url,name',
+          },
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        },
+      );
+      const userInfo = userInfoResponse.data['data'];
+
+      const { id, name, username, profile_image_url } = userInfo;
+
+      const user = await this.authUser(LoginMethod.GITHUB, {
+        firstName: name,
+        lastName: name,
+        identifier: id.toString(),
+        avatarUrl: profile_image_url,
+        username: username,
+      });
+
+      const tokenPayload: TokenPayload = {
+        id: user.id,
+      };
+
+      delete user.LoginMethod;
+
+      return ResponseHandler.success<
+        AuthResponse & {
+          info: UnsensitiveUser<typeof user>;
+        }
+      >(
+        {
+          ...(await this.jwtService.signToken(tokenPayload)),
+          info: user,
+        },
+        HttpStatus.OK,
+        'Login successfully',
+      );
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  private handleError(error) {
+    if (error instanceof HttpException) {
+      throw error;
+    }
+
+    let errorResponse = error;
+    let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+    if (error instanceof AxiosError) {
+      errorResponse = error.response?.data ?? errorResponse;
+      statusCode = error.status ?? statusCode;
+    }
+    throw new AppException(
+      errorResponse,
+      statusCode,
+      'Failed to authenticate with X',
+    );
   }
 
   private async authUser(
     method: LoginMethod,
     userData: {
-      email: string;
+      email?: string;
       identifier: string;
       firstName: string;
       lastName: string;
@@ -411,6 +481,12 @@ export class AuthService {
   ) {
     const { email, identifier, firstName, lastName, avatarUrl, username } =
       userData;
+
+    if (!email) {
+      return ResponseHandler.success({
+        identifier,
+      });
+    }
     let user: any = await this.userQuery.find(
       {
         email,
