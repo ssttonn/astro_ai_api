@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ProfileService } from './services/profile.service';
 import { ProfileController } from './controllers/profile.controller';
-import { UserQuery } from 'src/shared/queries/user.query';
+import { UserDatasource } from 'src/shared/datasources/user.datasource';
 
 @Module({
   controllers: [ProfileController],
-  providers: [ProfileService, UserQuery],
+  providers: [ProfileService, UserDatasource],
 })
 export class ProfileModule {}

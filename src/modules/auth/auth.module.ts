@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './services/auth.service';
 import { AuthController } from './controllers/auth.controller';
-import { UserQuery } from 'src/shared/queries/user.query';
-import { LoginMethodQuery } from 'src/shared/queries/login-method.query';
+import { AuthService } from './services/auth.service';
+import { UserDatasource } from 'src/shared/datasources/user.datasource';
+import { LoginMethodDatasource } from 'src/shared/datasources/login-method.repository';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, UserQuery, LoginMethodQuery],
+  providers: [AuthService, UserDatasource, LoginMethodDatasource],
   exports: [AuthService],
 })
 export class AuthModule {}

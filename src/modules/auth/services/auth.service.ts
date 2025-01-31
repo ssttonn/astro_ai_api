@@ -13,17 +13,16 @@ import {
   TokenPayload,
   UserWithoutPassword as UnsensitiveUser,
 } from 'src/common/types/custom.type';
-import { LoginMethodQuery } from 'src/shared/queries/login-method.query';
-import { UserQuery } from 'src/shared/queries/user.query';
 import { LoginBodyDto } from '../dtos/login-body.dto';
 import { RegisterBodyDto } from '../dtos/register-body.dto';
+import { UserDatasource } from 'src/shared/datasources/user.datasource';
+import { LoginMethodDatasource } from 'src/shared/datasources/login-method.repository';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prismaService: PrismaService,
-    private readonly userQuery: UserQuery,
-    private readonly loginMethodQuery: LoginMethodQuery,
+    private readonly userDatasource: UserDatasource,
+    private readonly loginMethodDatasource: LoginMethodDatasource,
     private readonly jwtService: JsonwebtokenService,
     private readonly httpService: HttpService,
   ) {}
@@ -31,7 +30,7 @@ export class AuthService {
   async login(loginBody: LoginBodyDto) {
     const { email, password } = loginBody;
 
-    const existingLoginMethod = await this.loginMethodQuery.find(
+    const existingLoginMethod = await this.loginMethodDatasource.find(
       {
         email,
         method: LoginMethod.EMAIL,
@@ -76,10 +75,8 @@ export class AuthService {
   async register(registerBody: RegisterBodyDto) {
     const { email, password, firstName, lastName, username } = registerBody;
 
-    const existingUser = await this.prismaService.user.findFirst({
-      where: {
-        email,
-      },
+    const existingUser = await this.userDatasource.find({
+      email,
     });
 
     if (existingUser) {
@@ -93,25 +90,16 @@ export class AuthService {
     const saltOrRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltOrRounds);
 
-    const newUser = await this.prismaService.user.create({
-      data: {
-        email,
-        firstName,
-        lastName,
-        username,
-        LoginMethod: {
-          create: {
-            method: 'EMAIL',
-            identifier: hashedPassword,
-          },
+    const newUser = await this.userDatasource.create({
+      email,
+      firstName,
+      lastName,
+      username,
+      LoginMethod: {
+        create: {
+          method: 'EMAIL',
+          identifier: hashedPassword,
         },
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        username: true,
       },
     });
 
@@ -146,7 +134,7 @@ export class AuthService {
       throw new AppException('Invalid refresh token', HttpStatus.UNAUTHORIZED);
     }
 
-    const user = await this.userQuery.find({ id: tokenPayload.id });
+    const user = await this.userDatasource.find({ id: tokenPayload.id });
 
     if (!user) {
       throw new AppException('User not found', HttpStatus.NOT_FOUND);
@@ -487,7 +475,7 @@ export class AuthService {
         identifier,
       });
     }
-    let user: any = await this.userQuery.find(
+    let user: any = await this.userDatasource.find(
       {
         email,
       },
@@ -497,28 +485,17 @@ export class AuthService {
     );
 
     if (!user) {
-      user = await this.prismaService.user.create({
-        data: {
-          email,
-          firstName,
-          lastName,
-          avatar: avatarUrl,
-          username: username || email.split('@')[0],
-          LoginMethod: {
-            create: {
-              method: method as LoginMethodType,
-              identifier,
-            },
+      user = await this.userDatasource.create({
+        email,
+        firstName,
+        lastName,
+        avatar: avatarUrl,
+        username: username || email.split('@')[0],
+        LoginMethod: {
+          create: {
+            method: method as LoginMethodType,
+            identifier,
           },
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          username: true,
-          avatar: true,
-          bio: true,
         },
       });
     }
@@ -528,13 +505,11 @@ export class AuthService {
     );
 
     if (!loginMethod) {
-      await this.prismaService.loginMethod.create({
-        data: {
-          userId: user.id,
-          method: method as LoginMethodType,
-          identifier,
-          email,
-        },
+      await this.loginMethodDatasource.create({
+        User: user.id,
+        method: method as LoginMethodType,
+        identifier,
+        email,
       });
     }
     return user;
