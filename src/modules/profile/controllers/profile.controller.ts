@@ -12,7 +12,6 @@ import { AuthenticationRequired } from 'src/common/decorators/auth.decorator';
 import { TokenPayload } from 'src/common/types/custom.type';
 import { ProfileService } from '../services/profile.service';
 import { UpdateProfileBodyDto } from '../dtos/update-profile.dto';
-import { ClientVersion } from 'src/common/decorators/version.decorator';
 import { NotEmptyPipe } from 'src/shared/pipes/not-empty.pipe';
 
 @Controller('profile')
