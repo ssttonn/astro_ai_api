@@ -6,7 +6,7 @@ import { LoginMethodDatasource } from 'src/shared/datasources/login-method.repos
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, UserDatasource, LoginMethodDatasource],
+  providers: [UserDatasource, AuthService, LoginMethodDatasource],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -1,18 +1,9 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Patch,
-  Put,
-  Request,
-  UsePipes,
-  ValidationPipe,
-} from '@nestjs/common';
+import { Body, Controller, Get, Patch, Request } from '@nestjs/common';
 import { AuthenticationRequired } from 'src/common/decorators/auth.decorator';
 import { TokenPayload } from 'src/common/types/custom.type';
-import { ProfileService } from '../services/profile.service';
-import { UpdateProfileBodyDto } from '../dtos/update-profile.dto';
 import { NotEmptyPipe } from 'src/shared/pipes/not-empty.pipe';
+import { UpdateProfileBodyDto } from '../dtos/update-profile.dto';
+import { ProfileService } from '../services/profile.service';
 
 @Controller('profile')
 export class ProfileController {

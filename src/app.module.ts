@@ -15,6 +15,7 @@ import {
   SpecificVersionGuard,
 } from './shared/guards/version.guard';
 import { AuthGuard } from './shared/guards/auth.guard';
+import { ConfigModule } from './shared/modules/config/config.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AuthGuard } from './shared/guards/auth.guard';
     PrismaModule,
     ProfileModule,
     JsonwebtokenModule,
+    ConfigModule.register(),
     HttpModule.register({
       timeout: 5000,
       maxRedirects: 5,

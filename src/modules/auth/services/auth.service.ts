@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { LoginMethodType } from '@prisma/client';
 import { AxiosError } from 'axios';
 import * as bcrypt from 'bcrypt';
@@ -17,6 +17,7 @@ import { LoginBodyDto } from '../dtos/login-body.dto';
 import { RegisterBodyDto } from '../dtos/register-body.dto';
 import { UserDatasource } from 'src/shared/datasources/user.datasource';
 import { LoginMethodDatasource } from 'src/shared/datasources/login-method.repository';
+import { ConfigService } from 'src/shared/modules/config/services/config.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly loginMethodDatasource: LoginMethodDatasource,
     private readonly jwtService: JsonwebtokenService,
     private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   async login(loginBody: LoginBodyDto) {
